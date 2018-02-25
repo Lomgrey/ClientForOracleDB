@@ -10,13 +10,16 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) throws Exception{
+        int width = 390;
+        int height = 555;
+
         Parent root = FXMLLoader.load(getClass().getResource("sample.fxml"));
-        Scene scene = new Scene(root, 390, 475);
+        Scene scene = new Scene(root, width, height);
 
         stage.setTitle("Oracle DB Client");
         stage.setScene(scene);
-        stage.setMinWidth(390);
-        stage.setMinHeight(475);
+        stage.setMinWidth(width);
+        stage.setMinHeight(height);
         stage.show();
     }
 
