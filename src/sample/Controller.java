@@ -6,6 +6,7 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
@@ -41,9 +42,9 @@ public class Controller {
 
     @FXML private TableColumn<Employee, Integer> cID;
 
-    @FXML private TableColumn<Employee, Integer> cName;
+    @FXML private TableColumn<Employee, String> cName;
 
-    @FXML private TableColumn<Employee, Integer> cPos;
+    @FXML private TableColumn<Employee, String> cPos;
 
     private Connection connection;
 
@@ -57,7 +58,66 @@ public class Controller {
         cPos.setCellValueFactory(new PropertyValueFactory<>("Position"));
 
         table.setEditable(true);
-        table.setOnKeyPressed(new TableEventHandler());
+        table.setOnKeyPressed(
+                e -> {
+                    KeyCodeCombination deleteCombination = new KeyCodeCombination(KeyCode.Q, KeyCombination.CONTROL_ANY);
+                    KeyCode delete = KeyCode.DELETE;
+
+                    if(deleteCombination.match(e) || e.getCode() == delete){
+                        Employee employee = table.getSelectionModel().getSelectedItem();
+                        try {
+                            delete(employee);
+                        } catch (SQLException e1) {
+                            showAlert(Alert.AlertType.ERROR, getClearMessage(e1.getMessage()));
+                            return;
+                        }
+                        showAlert(Alert.AlertType.INFORMATION, "Item deleted!");
+                        table.getItems().remove(employee);
+                    } else {
+                        table.refresh();
+                    }
+                }
+        );
+
+        cName.setCellValueFactory(new PropertyValueFactory<>("Name"));
+        cName.setCellFactory(TextFieldTableCell.forTableColumn());
+        cName.setOnEditCommit(
+                e -> {
+                    String newVal = e.getNewValue();
+                    int idCurrent = e.getRowValue().getId();
+
+                    try{
+                        update("NAME" ,newVal, idCurrent);
+                        e.getTableView().getItems()
+                                .get(e.getTablePosition().getRow())
+                                .setName(newVal);
+                    } catch (SQLException e1) {
+                        showAlert(
+                                Alert.AlertType.ERROR, e1.getMessage()
+                        );
+                        e.getTableView().refresh();
+                    }
+                }
+        );
+
+        cPos.setCellValueFactory(new PropertyValueFactory<>("Position"));
+        cPos.setCellFactory(TextFieldTableCell.forTableColumn());
+        cPos.setOnEditCommit(
+                e -> {
+                    String newVal = e.getNewValue();
+                    int idCurrent = e.getRowValue().getId();
+
+                    try{
+                        update("POSITION", newVal, idCurrent);
+                        e.getTableView().getItems()
+                                .get(e.getTablePosition().getRow())
+                                .setPosition(newVal);
+                    } catch (SQLException e1) {
+                        table.refresh();
+                        getClearMessage(e1.getMessage());
+                    }
+                }
+        );
 
         try {
             registerJDBCDriver();
@@ -179,11 +239,7 @@ public class Controller {
         int idT = Integer.valueOf(idTemp);
 
         try {
-            ResultSet rs = executeQuery(
-                    String.format("INSERT into owner.workers VALUES (%s, '%s', '%s')",
-                            idT, nameT, posT)
-            );
-
+            insert(new Employee(idT, nameT, posT));
         } catch (SQLException e) {
             String message = getClearMessage(e.getMessage());
             logArea.appendText(message + "\n");
@@ -201,6 +257,28 @@ public class Controller {
 
     private void clearTable(){
         table.getItems().clear();
+    }
+
+    private void update(String field, String newVal, int idCurrent) throws SQLException {
+        String query = "UPDATE OWNER.workers SET %s='%s' WHERE id=%s";
+        executeQuery(
+                String.format(query, field, newVal, idCurrent)
+        );
+    }
+
+    private void delete(Employee employee) throws SQLException {
+        String query = "DELETE FROM owner.workers WHERE id = %s";
+        executeQuery(String.format(query, employee.getId()));
+    }
+
+    private void insert(Employee employee) throws SQLException {
+        String query = "INSERT into owner.workers VALUES (%s, '%s', '%s')";
+        executeQuery(
+                String.format(query,
+                        employee.getId(),
+                        employee.getName(),
+                        employee.getPosition())
+        );
     }
 
     private void showAlert(Alert.AlertType alertType, String message){
@@ -222,25 +300,5 @@ public class Controller {
         }
 
         return message; //хотя такого и не должно случиться
-    }
-
-    public class TableEventHandler implements EventHandler<KeyEvent>{
-        KeyCodeCombination deleteCombination = new KeyCodeCombination(KeyCode.Q, KeyCombination.CONTROL_ANY);
-        KeyCode delete = KeyCode.DELETE;
-
-        @Override
-        public void handle(KeyEvent event) {
-            if(deleteCombination.match(event) || event.getCode() == delete){
-                Employee employee = table.getSelectionModel().getSelectedItem();
-                String query = "DELETE FROM workers WHERE id = %s";
-                try {
-                    executeQuery(String.format(query, employee.getId()));
-                } catch (SQLException e1) {
-                    showAlert(Alert.AlertType.ERROR, getClearMessage(e1.getMessage()));
-                    return;
-                }
-                showAlert(Alert.AlertType.INFORMATION, "Item deleted!");
-            }
-        }
     }
 }
