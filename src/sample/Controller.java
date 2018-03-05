@@ -2,7 +2,6 @@ package sample;
 
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -10,13 +9,10 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
-import javafx.scene.input.KeyEvent;
 import sample.model.Employee;
 
 import java.net.ConnectException;
 import java.sql.*;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -68,7 +64,7 @@ public class Controller {
                         try {
                             delete(employee);
                         } catch (SQLException e1) {
-                            showAlert(Alert.AlertType.ERROR, getClearMessage(e1.getMessage()));
+                            showAlert(Alert.AlertType.ERROR, getCleanMessage(e1.getMessage()));
                             return;
                         }
                         showAlert(Alert.AlertType.INFORMATION, "Item deleted!");
@@ -114,7 +110,7 @@ public class Controller {
                                 .setPosition(newVal);
                     } catch (SQLException e1) {
                         table.refresh();
-                        getClearMessage(e1.getMessage());
+                        getCleanMessage(e1.getMessage());
                     }
                 }
         );
@@ -160,7 +156,7 @@ public class Controller {
             logArea.appendText(String.format("User %s log in\n", currentUser));
         } catch (SQLException e) {
             logArea.appendText("Error, try again.\n");
-            showAlert(Alert.AlertType.ERROR, getClearMessage(e.getMessage()));
+            showAlert(Alert.AlertType.ERROR, getCleanMessage(e.getMessage()));
             return;
         }
 
@@ -241,7 +237,7 @@ public class Controller {
         try {
             insert(new Employee(idT, nameT, posT));
         } catch (SQLException e) {
-            String message = getClearMessage(e.getMessage());
+            String message = getCleanMessage(e.getMessage());
             logArea.appendText(message + "\n");
             showAlert(Alert.AlertType.ERROR, message);
             return;
@@ -290,15 +286,22 @@ public class Controller {
         alert.showAndWait();
     }
 
-    private String getClearMessage(String message){
-        Pattern p = Pattern.compile(":.+([\\(]|;|$)");
+    private String getCleanMessage(String message){
+        Pattern p = Pattern.compile(":(\\d|\\w|\\s)+([\\(]|;|$)");
         Matcher m = p.matcher(message);
 
-        if(m.find()){
-            String s = m.group();
-            return s.substring(1, s.length() - 1);
+        String s = "";
+        if (m.find()) {
+            s = m.group();
         }
-
-        return message; //хотя такого и не должно случиться
+        if (s.equals("")){
+            return message;
+        }
+        if (s.substring(s.length() - 1, s.length()).equals(";") ||
+                s.substring(s.length() - 1, s.length()).equals("(")) {
+            return s.substring(1, s.length() - 1);
+        } else {
+            return s.substring(1);
+        }
     }
 }
